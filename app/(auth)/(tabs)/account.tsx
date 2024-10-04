@@ -1,25 +1,27 @@
-import { StatusBar } from "expo-status-bar";
-import { Platform, StyleSheet } from "react-native";
+import { Button, StyleSheet } from "react-native";
 
 import EditScreenInfo from "@/components/EditScreenInfo";
 import { Text, View } from "@/components/Themed";
-// Import CustomHeaders
+import { useSession } from "../../ctx";
 
-export default function ModalScreen() {
+export default function AccountScreen() {
+  const { signOut, session } = useSession();
   return (
     <View style={styles.container}>
-      {/* Include CustomHeaders at the top */}
-
-      <Text style={styles.title}>Bag Contents</Text>
+      <Text style={styles.title}>Tab One</Text>
+      <Text>Welcome, {session}</Text>
       <View
         style={styles.separator}
         lightColor="#eee"
         darkColor="rgba(255,255,255,0.1)"
       />
-      <EditScreenInfo path="app/(auth)/modal.tsx" />
-
-      {/* Use a light status bar on iOS to account for the black space above the modal */}
-      <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
+      <EditScreenInfo path="app/(auth)/(tabs)/index.tsx" />
+      <Button
+        title="Sign Out"
+        onPress={() => {
+          signOut();
+        }}
+      />
     </View>
   );
 }

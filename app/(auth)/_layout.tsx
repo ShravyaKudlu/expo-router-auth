@@ -1,7 +1,8 @@
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack } from "expo-router";
 
-import { useSession } from '../ctx';
-import { Text } from '@/components/Themed';
+import { useSession } from "../ctx";
+import { Text } from "@/components/Themed";
+import CustomHeaders from "@/components/CustomHeader";
 
 export default function AppLayout() {
   const { session, isLoading } = useSession();
@@ -18,8 +19,14 @@ export default function AppLayout() {
 
   return (
     <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+      <Stack.Screen
+        name="(tabs)"
+        options={{ header: CustomHeaders }}
+      />
+      <Stack.Screen
+        name="modal"
+        options={{ presentation: "modal" }}
+      />
     </Stack>
-  )
+  );
 }
