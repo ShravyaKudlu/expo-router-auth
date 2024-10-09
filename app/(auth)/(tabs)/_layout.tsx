@@ -2,10 +2,7 @@ import React from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Link, Tabs } from "expo-router";
 import { Pressable } from "react-native";
-
-import Colors from "@/constants/Colors";
-import { useColorScheme } from "@/components/useColorScheme";
-import { useClientOnlyValue } from "@/components/useClientOnlyValue";
+import { useTheme } from "@/app/ThemeContext"; // Import useTheme
 import { Fontisto, Ionicons } from "@expo/vector-icons";
 
 function TabBarIcon(props: {
@@ -22,13 +19,14 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { theme } = useTheme(); // Access the theme from the context
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        headerShown: useClientOnlyValue(false, true),
+        tabBarActiveTintColor: theme.separator, // Use tint color from theme
+        headerShown: false,
+        tabBarInactiveBackgroundColor: theme.background, // Use background color from theme
       }}
     >
       <Tabs.Screen

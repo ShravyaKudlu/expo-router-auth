@@ -1,9 +1,9 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, createContext, useState, ReactNode } from "react";
 import { SessionProvider } from "./ctx";
-
+import { ThemeProvider } from "./ThemeContext";
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
@@ -45,7 +45,9 @@ import { Slot } from "expo-router";
 function RootLayoutNav() {
   return (
     <SessionProvider>
-      <Slot />
+      <ThemeProvider>
+        <Slot />
+      </ThemeProvider>
     </SessionProvider>
   );
 }
