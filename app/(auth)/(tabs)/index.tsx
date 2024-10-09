@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,15 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
 
-const products = [
+type Product = {
+  id: string;
+  name: string;
+  price: string;
+  description: string;
+  image: string;
+};
+
+const products: Product[] = [
   {
     id: "1",
     name: "Product 1",
@@ -30,130 +38,180 @@ const products = [
     image: "https://via.placeholder.com/150",
   },
   // Add more products as needed
+  {
+    id: "3",
+    name: "Product 3",
+    price: "$50.00",
+    description: "This is yet another great product.",
+    image: "https://via.placeholder.com/150",
+  },
+  {
+    id: "4",
+    name: "Product 4",
+    price: "$25.00",
+    description: "This product is also great.",
+    image: "https://via.placeholder.com/150",
+  },
+  {
+    id: "5",
+    name: "Product 5",
+    price: "$45.00",
+    description: "This is a fantastic product.",
+    image: "https://via.placeholder.com/150",
+  },
+  {
+    id: "6",
+    name: "Product 6",
+    price: "$30.00",
+    description: "This product is amazing.",
+    image: "https://via.placeholder.com/150",
+  },
 ];
 
 const Index: React.FC = () => {
-  const [selectedProduct, setSelectedProduct] = useState<
-    (typeof products)[0] | null
-  >(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [numColumns, setNumColumns] = useState(2);
   const [cart, setCart] = useState<{ [key: string]: number }>({});
   const [likedProducts, setLikedProducts] = useState<{
     [key: string]: boolean;
   }>({});
-  const slideAnim = useRef(new Animated.Value(0)).current; // Initial position for the modal (off-screen)
+  const [visibleQuantityControls, setVisibleQuantityControls] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
-  const handleProductPress = (product: (typeof products)[0]) => {
+  const handleProductPress = useCallback((product: Product) => {
     setSelectedProduct(product);
     setModalVisible(true);
-  };
+  }, []);
 
-  const handleAddToCart = (product: (typeof products)[0], quantity: number) => {
+  const handleAddToCart = useCallback((product: Product, quantity: number) => {
     setCart((prevCart) => ({
       ...prevCart,
       [product.id]: (prevCart[product.id] || 0) + quantity,
     }));
     setModalVisible(false);
-  };
+  }, []);
 
-  const handleLikePress = (productId: string) => {
+  const handleLikePress = useCallback((productId: string) => {
     setLikedProducts((prevLikedProducts) => ({
       ...prevLikedProducts,
       [productId]: !prevLikedProducts[productId],
     }));
-  };
+  }, []);
+
+  const handleShoppingBagPress = useCallback((productId: string) => {
+    setVisibleQuantityControls((prevState) => ({
+      ...prevState,
+      [productId]: true,
+    }));
+    setCart((prevCart) => ({
+      ...prevCart,
+      [productId]: 1,
+    }));
+  }, []);
 
   useEffect(() => {
     if (modalVisible) {
-      // Animate the modal sliding up when it becomes visible
       Animated.timing(slideAnim, {
-        toValue: 1, // Slide into the view
+        toValue: 1,
         duration: 500,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }).start();
     } else {
-      // Reset the animation when modal is closed
       Animated.timing(slideAnim, {
-        toValue: 0, // Slide out of view
+        toValue: 0,
         duration: 300,
         useNativeDriver: true,
       }).start();
     }
-  }, [modalVisible]);
+  }, [modalVisible, slideAnim]);
 
-  const renderProductItem = ({ item }: { item: (typeof products)[0] }) => (
-    <View style={styles.productCard}>
-      <TouchableOpacity onPress={() => handleProductPress(item)}>
-        <Image
-          source={{ uri: item.image }}
-          style={styles.productImage}
-        />
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productPrice}>{item.price}</Text>
-      </TouchableOpacity>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity onPress={() => handleLikePress(item.id)}>
-          <Icon
-            name="heart"
-            size={24}
-            color={likedProducts[item.id] ? "red" : "grey"}
+  const renderProductItem = useCallback(
+    ({ item }: { item: Product }) => (
+      <View style={styles.productCard}>
+        <TouchableOpacity onPress={() => handleProductPress(item)}>
+          <Image
+            source={{ uri: item.image }}
+            style={styles.productImage}
           />
+          <Text style={styles.productName}>{item.name}</Text>
+          <Text style={styles.productPrice}>{item.price}</Text>
         </TouchableOpacity>
-        {cart[item.id] > 0 && (
-          <View style={styles.quantityContainer}>
-            <TouchableOpacity
-              style={styles.quantityButton}
-              onPress={() =>
-                setCart((prevCart) => ({
-                  ...prevCart,
-                  [item.id]: Math.max((prevCart[item.id] || 0) - 1, 0),
-                }))
-              }
-            >
-              <Text style={styles.quantityButtonText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.quantityText}>{cart[item.id] || 0}</Text>
-            <TouchableOpacity
-              style={styles.quantityButton}
-              onPress={() =>
-                setCart((prevCart) => ({
-                  ...prevCart,
-                  [item.id]: (prevCart[item.id] || 0) + 1,
-                }))
-              }
-            >
-              <Text style={styles.quantityButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {(cart[item.id] || 0) === 0 && (
-          <TouchableOpacity
-            style={styles.addToCartButton}
-            onPress={() => handleAddToCart(item, 1)}
-          >
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity onPress={() => handleLikePress(item.id)}>
             <Icon
-              name="shopping-bag"
+              name="heart"
               size={24}
-              color="#fff"
+              color={likedProducts[item.id] ? "red" : "grey"}
             />
           </TouchableOpacity>
-        )}
+
+          {cart[item.id] && cart[item.id] > 0 ? (
+            <View style={styles.quantityContainer}>
+              <TouchableOpacity
+                style={styles.quantityButton}
+                onPress={() =>
+                  setCart((prevCart) => ({
+                    ...prevCart,
+                    [item.id]: Math.max((prevCart[item.id] || 0) - 1, 0),
+                  }))
+                }
+              >
+                <Text style={styles.quantityButtonText}>-</Text>
+              </TouchableOpacity>
+              <Text style={styles.quantityText}>{cart[item.id] || 0}</Text>
+              <TouchableOpacity
+                style={styles.quantityButton}
+                onPress={() =>
+                  setCart((prevCart) => ({
+                    ...prevCart,
+                    [item.id]: (prevCart[item.id] || 0) + 1,
+                  }))
+                }
+              >
+                <Text style={styles.quantityButtonText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.shoppingBagButton}
+              onPress={() => handleShoppingBagPress(item.id)}
+            >
+              <Icon
+                name="shopping-bag"
+                size={24}
+                color="grey"
+              />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-    </View>
+    ),
+    [
+      cart,
+      handleLikePress,
+      handleShoppingBagPress,
+      likedProducts,
+      visibleQuantityControls,
+    ]
   );
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to the E-Commerce App!</Text>
+
       <FlatList
         data={products}
         renderItem={renderProductItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.productList}
+        numColumns={numColumns}
       />
 
-      {/* Modal for displaying product details */}
       {selectedProduct && (
         <Modal
           transparent={true}
@@ -171,7 +229,7 @@ const Index: React.FC = () => {
                         {
                           translateY: slideAnim.interpolate({
                             inputRange: [0, 1],
-                            outputRange: [800, 0], // Slide from off-screen (800) to on-screen (0)
+                            outputRange: [800, 0],
                           }),
                         },
                       ],
@@ -192,6 +250,7 @@ const Index: React.FC = () => {
                     <Text style={styles.modalProductDescription}>
                       {selectedProduct.description}
                     </Text>
+
                     <View style={styles.buttonContainer}>
                       <TouchableOpacity
                         onPress={() => handleLikePress(selectedProduct.id)}
@@ -204,7 +263,9 @@ const Index: React.FC = () => {
                           }
                         />
                       </TouchableOpacity>
-                      {cart[selectedProduct.id] > 0 && (
+
+                      {cart[selectedProduct.id] &&
+                      cart[selectedProduct.id] > 0 ? (
                         <View style={styles.quantityContainer}>
                           <TouchableOpacity
                             style={styles.quantityButton}
@@ -236,21 +297,23 @@ const Index: React.FC = () => {
                             <Text style={styles.quantityButtonText}>+</Text>
                           </TouchableOpacity>
                         </View>
-                      )}
-                      {cart[selectedProduct.id] === 0 && (
+                      ) : (
                         <TouchableOpacity
-                          style={styles.addToCartButton}
-                          onPress={() => handleAddToCart(selectedProduct, 1)}
+                          style={styles.shoppingBagButton}
+                          onPress={() =>
+                            handleShoppingBagPress(selectedProduct.id)
+                          }
                         >
                           <Icon
                             name="shopping-bag"
                             size={24}
-                            color="#fff"
+                            color="grey"
                           />
                         </TouchableOpacity>
                       )}
                     </View>
                   </ScrollView>
+
                   <TouchableOpacity
                     style={styles.closeButton}
                     onPress={() => setModalVisible(false)}
@@ -326,15 +389,18 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
+  shoppingBagButton: {
+    padding: 10,
+  },
   modalBackground: {
     flex: 1,
-    justifyContent: "flex-end", // Align modal to bottom
+    justifyContent: "flex-end",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
     width: "100%",
-    height: "70%", // Default height
-    maxHeight: "90%", // Allow modal to expand up to 90%
+    height: "70%",
+    maxHeight: "90%",
     backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
