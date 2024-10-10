@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Link, useNavigation } from "expo-router";
 import { FontAwesome } from "@expo/vector-icons";
 import { useState } from "react";
+import { useTheme } from "@/app/ThemeContext";
 
 const CustomHeaders: React.FC = () => {
   const insets = useSafeAreaInsets();

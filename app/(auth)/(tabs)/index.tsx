@@ -11,8 +11,15 @@ import {
   Animated,
   Easing,
   TouchableWithoutFeedback,
+  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
+
+type Sizes = {
+  S: number;
+  M: number;
+  L: number;
+};
 
 type Product = {
   id: string;
@@ -20,64 +27,54 @@ type Product = {
   price: string;
   description: string;
   image: string;
+  sizes: Sizes;
 };
 
-const products: Product[] = [
+const initialProducts: Product[] = [
   {
     id: "1",
     name: "Product 1",
-    price: "$20.00",
-    description: "This is a great product.",
+    price: "$10.00",
+    description: "Description for Product 1",
     image: "https://via.placeholder.com/150",
+    sizes: { S: 10, M: 5, L: 0 },
   },
   {
     id: "2",
     name: "Product 2",
-    price: "$35.00",
-    description: "This is another great product.",
+    price: "$20.00",
+    description: "Description for Product 2",
     image: "https://via.placeholder.com/150",
+    sizes: { S: 0, M: 2, L: 3 },
   },
-  // Add more products as needed
   {
     id: "3",
     name: "Product 3",
-    price: "$50.00",
-    description: "This is yet another great product.",
+    price: "$30.00",
+    description: "Description for Product 3",
     image: "https://via.placeholder.com/150",
+    sizes: { S: 1, M: 0, L: 4 },
   },
   {
     id: "4",
     name: "Product 4",
-    price: "$25.00",
-    description: "This product is also great.",
+    price: "$40.00",
+    description: "Description for Product 4",
     image: "https://via.placeholder.com/150",
-  },
-  {
-    id: "5",
-    name: "Product 5",
-    price: "$45.00",
-    description: "This is a fantastic product.",
-    image: "https://via.placeholder.com/150",
-  },
-  {
-    id: "6",
-    name: "Product 6",
-    price: "$30.00",
-    description: "This product is amazing.",
-    image: "https://via.placeholder.com/150",
+    sizes: { S: 3, M: 3, L: 3 },
   },
 ];
 
 const Index: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [numColumns, setNumColumns] = useState(2);
   const [cart, setCart] = useState<{ [key: string]: number }>({});
   const [likedProducts, setLikedProducts] = useState<{
     [key: string]: boolean;
   }>({});
-  const [visibleQuantityControls, setVisibleQuantityControls] = useState<{
-    [key: string]: boolean;
+  const [selectedSizes, setSelectedSizes] = useState<{
+    [key: string]: string | null;
   }>({});
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -86,48 +83,64 @@ const Index: React.FC = () => {
     setModalVisible(true);
   }, []);
 
-  const handleAddToCart = useCallback((product: Product, quantity: number) => {
-    setCart((prevCart) => ({
-      ...prevCart,
-      [product.id]: (prevCart[product.id] || 0) + quantity,
-    }));
-    setModalVisible(false);
-  }, []);
+  const handleAddToCart = useCallback(
+    (product: Product, quantity: number) => {
+      const selectedSize = selectedSizes[product.id];
+      if (!selectedSize) {
+        Alert.alert("Warning", "Please select a size before adding to cart.");
+        return;
+      }
+      setCart((prevCart) => ({
+        ...prevCart,
+        [product.id]: (prevCart[product.id] || 0) + quantity,
+      }));
+      updateProductSizes(product, selectedSize, -quantity);
+      setModalVisible(false);
+    },
+    [selectedSizes]
+  );
+
+  const updateProductSizes = (
+    product: Product,
+    selectedSize: string,
+    change: number
+  ) => {
+    setProducts((prevProducts) =>
+      prevProducts.map((p) =>
+        p.id === product.id
+          ? {
+              ...p,
+              sizes: {
+                ...p.sizes,
+                [selectedSize]: p.sizes[selectedSize as keyof Sizes] + change,
+              },
+            }
+          : p
+      )
+    );
+  };
 
   const handleLikePress = useCallback((productId: string) => {
-    setLikedProducts((prevLikedProducts) => ({
-      ...prevLikedProducts,
-      [productId]: !prevLikedProducts[productId],
+    setLikedProducts((prevLiked) => ({
+      ...prevLiked,
+      [productId]: !prevLiked[productId],
     }));
   }, []);
 
-  const handleShoppingBagPress = useCallback((productId: string) => {
-    setVisibleQuantityControls((prevState) => ({
-      ...prevState,
-      [productId]: true,
-    }));
-    setCart((prevCart) => ({
-      ...prevCart,
-      [productId]: 1,
+  const handleSizePress = useCallback((productId: string, size: string) => {
+    setSelectedSizes((prevSizes) => ({
+      ...prevSizes,
+      [productId]: prevSizes[productId] === size ? null : size,
     }));
   }, []);
 
   useEffect(() => {
-    if (modalVisible) {
-      Animated.timing(slideAnim, {
-        toValue: 1,
-        duration: 500,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [modalVisible, slideAnim]);
+    Animated.timing(slideAnim, {
+      toValue: modalVisible ? 1 : 0,
+      duration: modalVisible ? 500 : 300,
+      useNativeDriver: true,
+    }).start();
+  }, [modalVisible]);
 
   const renderProductItem = useCallback(
     ({ item }: { item: Product }) => (
@@ -140,7 +153,22 @@ const Index: React.FC = () => {
           <Text style={styles.productName}>{item.name}</Text>
           <Text style={styles.productPrice}>{item.price}</Text>
         </TouchableOpacity>
-
+        <View style={styles.sizeContainer}>
+          {Object.entries(item.sizes).map(([size, quantity]) => (
+            <TouchableOpacity
+              key={size}
+              style={[
+                styles.sizeButton,
+                selectedSizes[item.id] === size && styles.sizeButtonSelected,
+                quantity === 0 && styles.sizeButtonDisabled,
+              ]}
+              onPress={() => handleSizePress(item.id, size)}
+              disabled={quantity === 0}
+            >
+              <Text style={styles.sizeButtonText}>{size}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <View style={styles.buttonContainer}>
           <TouchableOpacity onPress={() => handleLikePress(item.id)}>
             <Icon
@@ -149,37 +177,21 @@ const Index: React.FC = () => {
               color={likedProducts[item.id] ? "red" : "grey"}
             />
           </TouchableOpacity>
-
           {cart[item.id] && cart[item.id] > 0 ? (
             <View style={styles.quantityContainer}>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={() =>
-                  setCart((prevCart) => ({
-                    ...prevCart,
-                    [item.id]: Math.max((prevCart[item.id] || 0) - 1, 0),
-                  }))
-                }
-              >
-                <Text style={styles.quantityButtonText}>-</Text>
-              </TouchableOpacity>
-              <Text style={styles.quantityText}>{cart[item.id] || 0}</Text>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={() =>
-                  setCart((prevCart) => ({
-                    ...prevCart,
-                    [item.id]: (prevCart[item.id] || 0) + 1,
-                  }))
-                }
-              >
-                <Text style={styles.quantityButtonText}>+</Text>
-              </TouchableOpacity>
+              <QuantityControls
+                productId={item.id}
+                selectedSizes={selectedSizes}
+                cart={cart}
+                setCart={setCart}
+                updateProductSizes={updateProductSizes}
+                products={products}
+              />
             </View>
           ) : (
             <TouchableOpacity
               style={styles.shoppingBagButton}
-              onPress={() => handleShoppingBagPress(item.id)}
+              onPress={() => handleAddToCart(item, 1)}
             >
               <Icon
                 name="shopping-bag"
@@ -191,27 +203,19 @@ const Index: React.FC = () => {
         </View>
       </View>
     ),
-    [
-      cart,
-      handleLikePress,
-      handleShoppingBagPress,
-      likedProducts,
-      visibleQuantityControls,
-    ]
+    [cart, likedProducts, selectedSizes]
   );
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to the E-Commerce App!</Text>
-
       <FlatList
         data={products}
         renderItem={renderProductItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.productList}
-        numColumns={numColumns}
+        numColumns={2}
       />
-
       {selectedProduct && (
         <Modal
           transparent={true}
@@ -250,7 +254,28 @@ const Index: React.FC = () => {
                     <Text style={styles.modalProductDescription}>
                       {selectedProduct.description}
                     </Text>
-
+                    <View style={styles.sizeContainer}>
+                      {Object.entries(selectedProduct.sizes).map(
+                        ([size, quantity]) => (
+                          <TouchableOpacity
+                            key={size}
+                            style={[
+                              styles.sizeButton,
+                              selectedSizes[selectedProduct.id] === size &&
+                                styles.sizeButtonSelected,
+                              quantity === 0 && styles.sizeButtonDisabled,
+                            ]}
+                            onPress={() =>
+                              quantity > 0 &&
+                              handleSizePress(selectedProduct.id, size)
+                            }
+                            disabled={quantity === 0}
+                          >
+                            <Text style={styles.sizeButtonText}>{size}</Text>
+                          </TouchableOpacity>
+                        )
+                      )}
+                    </View>
                     <View style={styles.buttonContainer}>
                       <TouchableOpacity
                         onPress={() => handleLikePress(selectedProduct.id)}
@@ -263,46 +288,20 @@ const Index: React.FC = () => {
                           }
                         />
                       </TouchableOpacity>
-
                       {cart[selectedProduct.id] &&
                       cart[selectedProduct.id] > 0 ? (
-                        <View style={styles.quantityContainer}>
-                          <TouchableOpacity
-                            style={styles.quantityButton}
-                            onPress={() =>
-                              setCart((prevCart) => ({
-                                ...prevCart,
-                                [selectedProduct.id]: Math.max(
-                                  (prevCart[selectedProduct.id] || 0) - 1,
-                                  0
-                                ),
-                              }))
-                            }
-                          >
-                            <Text style={styles.quantityButtonText}>-</Text>
-                          </TouchableOpacity>
-                          <Text style={styles.quantityText}>
-                            {cart[selectedProduct.id] || 0}
-                          </Text>
-                          <TouchableOpacity
-                            style={styles.quantityButton}
-                            onPress={() =>
-                              setCart((prevCart) => ({
-                                ...prevCart,
-                                [selectedProduct.id]:
-                                  (prevCart[selectedProduct.id] || 0) + 1,
-                              }))
-                            }
-                          >
-                            <Text style={styles.quantityButtonText}>+</Text>
-                          </TouchableOpacity>
-                        </View>
+                        <QuantityControls
+                          productId={selectedProduct.id}
+                          selectedSizes={selectedSizes}
+                          cart={cart}
+                          setCart={setCart}
+                          updateProductSizes={updateProductSizes}
+                          products={[]}
+                        />
                       ) : (
                         <TouchableOpacity
                           style={styles.shoppingBagButton}
-                          onPress={() =>
-                            handleShoppingBagPress(selectedProduct.id)
-                          }
+                          onPress={() => handleAddToCart(selectedProduct, 1)}
                         >
                           <Icon
                             name="shopping-bag"
@@ -313,19 +312,84 @@ const Index: React.FC = () => {
                       )}
                     </View>
                   </ScrollView>
-
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={() => setModalVisible(false)}
-                  >
-                    <Text style={styles.closeButtonText}>Close</Text>
-                  </TouchableOpacity>
                 </Animated.View>
               </TouchableWithoutFeedback>
             </View>
           </TouchableWithoutFeedback>
         </Modal>
       )}
+    </View>
+  );
+};
+
+// Component for quantity controls
+const QuantityControls: React.FC<{
+  productId: string;
+  selectedSizes: { [key: string]: string | null };
+  cart: { [key: string]: number };
+  setCart: React.Dispatch<React.SetStateAction<{ [key: string]: number }>>;
+  updateProductSizes: (
+    product: Product,
+    selectedSize: string,
+    change: number
+  ) => void;
+  products: Product[];
+}> = ({
+  productId,
+  selectedSizes,
+  cart,
+  setCart,
+  updateProductSizes,
+  products,
+}) => {
+  const handleQuantityChange = (change: number) => {
+    const selectedSize = selectedSizes[productId];
+    if (!selectedSize) {
+      Alert.alert("Warning", "Please select a size before changing quantity.");
+      return;
+    }
+    const newQuantity = (cart[productId] || 0) + change;
+    if (newQuantity < 0) return;
+
+    setCart((prevCart) => ({
+      ...prevCart,
+      [productId]: newQuantity,
+    }));
+    updateProductSizes({ id: productId } as Product, selectedSize, -change);
+  };
+
+  const selectedSize = selectedSizes[productId];
+  const isOutOfStock = selectedSize
+    ? products.find((p) => p.id === productId)?.sizes[
+        selectedSize as keyof Sizes
+      ] === 0
+    : false;
+
+  return (
+    <View style={styles.quantityContainer}>
+      <TouchableOpacity
+        style={styles.quantityButton}
+        onPress={() => handleQuantityChange(-1)}
+      >
+        <Text style={styles.quantityButtonText}>-</Text>
+      </TouchableOpacity>
+      <Text style={styles.quantityText}>{cart[productId]}</Text>
+      <TouchableOpacity
+        style={[
+          styles.quantityButton,
+          isOutOfStock && styles.sizeButtonDisabled,
+        ]}
+        onPress={() => {
+          if (isOutOfStock) {
+            Alert.alert("Warning", "Selected size is out of stock.");
+          } else {
+            handleQuantityChange(1);
+          }
+        }}
+        disabled={isOutOfStock}
+      >
+        <Text style={styles.quantityButtonText}>+</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -454,6 +518,28 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   closeButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  sizeContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  sizeButton: {
+    backgroundColor: "#007BFF",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 5,
+    marginHorizontal: 5,
+  },
+  sizeButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  sizeButtonSelected: {
+    backgroundColor: "#0056b3",
+  },
+  sizeButtonText: {
     color: "#fff",
     fontWeight: "bold",
   },
